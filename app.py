@@ -1,7 +1,7 @@
-import streamlit as st
 import os
 import tempfile
 import matplotlib.pyplot as plt
+import streamlit as st
 
 # ── Page config — MUST be first Streamlit call ────────────────────────────────
 st.set_page_config(
@@ -182,43 +182,47 @@ with st.sidebar:
 st.title("🤖 Interactive RAG Chatbot")
 st.caption("Ask questions about your uploaded PDF documents.")
 
+# Always display past conversation if it exists
+for msg in st.session_state.chat_history:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Move chat input outside the conditional block so it's always rendered, 
+# but disable it if the QA chain isn't ready.
 if st.session_state.qa_chain is None:
     st.info("👈 Upload PDF(s) from the sidebar and click **Process Documents** to get started.")
+    query = st.chat_input("Upload documents to start chatting...", disabled=True)
 else:
-    # ── Chat history ──────────────────────────────────────────────────────────
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    # ── Query input ───────────────────────────────────────────────────────────
     query = st.chat_input("Ask a question about your documents…")
-    if query:
-        st.session_state.chat_history.append({"role": "user", "content": query})
-        with st.chat_message("user"):
-            st.markdown(query)
 
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking…"):
-                result      = st.session_state.qa_chain.invoke({"query": query})
-                answer      = result["result"]
-                source_docs = result.get("source_documents", [])
-            st.markdown(answer)
+if query:
+    st.session_state.chat_history.append({"role": "user", "content": query})
+    with st.chat_message("user"):
+        st.markdown(query)
 
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-        st.session_state.retrieved_chunks = source_docs
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking…"):
+            result      = st.session_state.qa_chain.invoke({"query": query})
+            answer      = result["result"]
+            source_docs = result.get("source_documents", [])
+        st.markdown(answer)
 
-    # ── Retrieved chunks visualisation ───────────────────────────────────────
-    if st.session_state.retrieved_chunks:
-        with st.expander("📊 Retrieved Document Chunks", expanded=True):
-            visualize_chunks(st.session_state.retrieved_chunks)
-            for i, doc in enumerate(st.session_state.retrieved_chunks):
-                src = doc.metadata.get("source", "unknown")
-                pg  = doc.metadata.get("page", "?")
-                with st.container(border=True):
-                    st.markdown(
-                        f"**Chunk {i + 1}** — `{os.path.basename(str(src))}` | Page {pg}"
-                    )
-                    st.text(
-                        doc.page_content[:400]
-                        + ("…" if len(doc.page_content) > 400 else "")
-                    )
+    st.session_state.chat_history.append({"role": "assistant", "content": answer})
+    st.session_state.retrieved_chunks = source_docs
+    st.rerun()
+
+# ── Retrieved chunks visualisation ───────────────────────────────────────
+if st.session_state.retrieved_chunks:
+    with st.expander("📊 Retrieved Document Chunks", expanded=True):
+        visualize_chunks(st.session_state.retrieved_chunks)
+        for i, doc in enumerate(st.session_state.retrieved_chunks):
+            src = doc.metadata.get("source", "unknown")
+            pg  = doc.metadata.get("page", "?")
+            with st.container(border=True):
+                st.markdown(
+                    f"**Chunk {i + 1}** — `{os.path.basename(str(src))}` | Page {pg}"
+                )
+                st.text(
+                    doc.page_content[:400]
+                    + ("…" if len(doc.page_content) > 400 else "")
+                )
