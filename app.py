@@ -24,14 +24,17 @@ except ImportError:
 
 from transformers import pipeline as hf_pipeline
 
-# RetrievalQA — try the canonical location first, fall back gracefully
+# Robust RetrievalQA import (works across langchain versions)
 try:
-    from langchain.chains import RetrievalQA
-except ImportError:
+    # LangChain 1.x / newer layout
+    from langchain.chains.retrieval_qa import RetrievalQA
+except Exception:
     try:
-        from langchain.chains.retrieval_qa.base import RetrievalQA  # type: ignore
-    except ImportError:
-        from langchain_community.chains import RetrievalQA          # type: ignore
+        # Older / alternative path
+        from langchain.chains import RetrievalQA
+    except Exception:
+        # Community package fallback
+        from langchain_community.chains import RetrievalQA
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 EMBED_MODEL   = "sentence-transformers/all-MiniLM-L6-v2"
