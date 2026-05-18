@@ -26,14 +26,11 @@ from transformers import pipeline as hf_pipeline
 
 # Robust RetrievalQA import (works across langchain versions)
 try:
-    # LangChain 1.x / newer layout
     from langchain.chains.retrieval_qa import RetrievalQA
 except Exception:
     try:
-        # Older / alternative path
         from langchain.chains import RetrievalQA
     except Exception:
-        # Community package fallback
         from langchain_community.chains import RetrievalQA
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -69,7 +66,7 @@ def load_llm():
     pipe = hf_pipeline(
         "text2text-generation",
         model=LLM_MODEL,
-        device_map="auto",
+        device_map="cpu",  # Forced CPU mapping for cloud server stability
         max_new_tokens=512,
     )
     return HuggingFacePipeline(pipeline=pipe)
@@ -182,13 +179,12 @@ with st.sidebar:
 st.title("🤖 Interactive RAG Chatbot")
 st.caption("Ask questions about your uploaded PDF documents.")
 
-# Always display past conversation if it exists
+# Render persistent conversation logs
 for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Move chat input outside the conditional block so it's always rendered, 
-# but disable it if the QA chain isn't ready.
+# Ensure input box displays correctly depending on initialization state
 if st.session_state.qa_chain is None:
     st.info("👈 Upload PDF(s) from the sidebar and click **Process Documents** to get started.")
     query = st.chat_input("Upload documents to start chatting...", disabled=True)
